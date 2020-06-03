@@ -592,5 +592,274 @@ JavaScript中`Number.MAX_SAFE_INTEGER`表示最大安全数字,计算结果是`9
 
 其实官方也考虑到了这个问题，`bigInt`类型在`es10`中被提出，现在`Chrome`中已经可以使用，使用`bigInt`可以操作超过最大安全数字的数字。
 
+六、还有哪些引用类型
+在ECMAScript中，引用类型是一种数据结构，用于将数据和功能组织在一起。
 
+我们通常所说的对象，就是某个特定引用类型的实例。
+
+在ECMAScript关于类型的定义中，只给出了Object类型，实际上，我们平时使用的很多引用类型的变量，并不是由Object构造的，但是它们原型链的终点都是Object，这些类型都属于引用类型。
+
+Array 数组
+Date 日期
+RegExp 正则
+Function 函数
+6.1 包装类型
+为了便于操作基本类型值，ECMAScript还提供了几个特殊的引用类型，他们是基本类型的包装类型：
+
+Boolean
+Number
+String
+注意包装类型和原始类型的区别：
+
+true === new Boolean(true); // false
+123 === new Number(123); // false
+'ConardLi' === new String('ConardLi'); // false
+console.log(typeof new String('ConardLi')); // object
+console.log(typeof 'ConardLi'); // string
+引用类型和包装类型的主要区别就是对象的生存期，使用new操作符创建的引用类型的实例，在执行流离开当前作用域之前都一直保存在内存中，而自基本类型则只存在于一行代码的执行瞬间，然后立即被销毁，这意味着我们不能在运行时为基本类型添加属性和方法。
+
+var name = 'ConardLi'
+name.color = 'red';
+console.log(name.color); // undefined
+6.2 装箱和拆箱
+装箱转换：把基本类型转换为对应的包装类型
+
+拆箱操作：把引用类型转换为基本类型
+
+既然原始类型不能扩展属性和方法，那么我们是如何使用原始类型调用方法的呢？
+
+每当我们操作一个基础类型时，后台就会自动创建一个包装类型的对象，从而让我们能够调用一些方法和属性，例如下面的代码：
+
+var name = "ConardLi";
+var name2 = name.substring(2);
+实际上发生了以下几个过程：
+
+创建一个String的包装类型实例
+在实例上调用substring方法
+销毁实例
+也就是说，我们使用基本类型调用方法，就会自动进行装箱和拆箱操作，相同的，我们使用Number和Boolean类型时，也会发生这个过程。
+
+从引用类型到基本类型的转换，也就是拆箱的过程中，会遵循ECMAScript规范规定的toPrimitive原则，一般会调用引用类型的valueOf和toString方法，你也可以直接重写toPeimitive方法。一般转换成不同类型的值遵循的原则不同，例如：
+
+引用类型转换为Number类型，先调用valueOf，再调用toString
+引用类型转换为String类型，先调用toString，再调用valueOf
+若valueOf和toString都不存在，或者没有返回基本类型，则抛出TypeError异常。
+
+const obj = {
+  valueOf: () => { console.log('valueOf'); return 123; },
+  toString: () => { console.log('toString'); return 'ConardLi'; },
+};
+console.log(obj - 1);   // valueOf   122
+console.log(`${obj}ConardLi`); // toString  ConardLiConardLi
+
+const obj2 = {
+  [Symbol.toPrimitive]: () => { console.log('toPrimitive'); return 123; },
+};
+console.log(obj2 - 1);   // valueOf   122
+
+const obj3 = {
+  valueOf: () => { console.log('valueOf'); return {}; },
+  toString: () => { console.log('toString'); return {}; },
+};
+console.log(obj3 - 1);  
+// valueOf  
+// toString
+// TypeError
+除了程序中的自动拆箱和自动装箱，我们还可以手动进行拆箱和装箱操作。我们可以直接调用包装类型的valueOf或toString，实现拆箱操作：
+
+var num =new Number("123");  
+console.log( typeof num.valueOf() ); //number
+console.log( typeof num.toString() ); //string
+七、类型转换
+因为JavaScript是弱类型的语言，所以类型转换发生非常频繁，上面我们说的装箱和拆箱其实就是一种类型转换。
+
+类型转换分为两种，隐式转换即程序自动进行的类型转换，强制转换即我们手动进行的类型转换。
+
+强制转换这里就不再多提及了，下面我们来看看让人头疼的可能发生隐式类型转换的几个场景，以及如何转换：
+
+7.1 类型转换规则
+如果发生了隐式转换，那么各种类型互转符合下面的规则：
+
+
+
+7.2 if语句和逻辑语句
+在if语句和逻辑语句中，如果只有单个变量，会先将变量转换为Boolean值，只有下面几种情况会转换成false，其余被转换成true：
+
+null
+undefined
+''
+NaN
+0
+false
+7.3 各种运数学算符
+我们在对各种非Number类型运用数学运算符(- * /)时，会先将非Number类型转换为Number类型;
+
+1 - true // 0
+1 - null //  1
+1 * undefined //  NaN
+2 * ['5'] //  10
+注意+是个例外，执行+操作符时：
+
+1.当一侧为String类型，被识别为字符串拼接，并会优先将另一侧转换为字符串类型。
+2.当一侧为Number类型，另一侧为原始类型，则将原始类型转换为Number类型。
+3.当一侧为Number类型，另一侧为引用类型，将引用类型和Number类型转换成字符串后拼接。
+123 + '123' // 123123   （规则1）
+123 + null  // 123    （规则2）
+123 + true // 124    （规则2）
+123 + {}  // 123[object Object]    （规则3）
+7.4 ==
+使用==时，若两侧类型相同，则比较结果和===相同，否则会发生隐式转换，使用==时发生的转换可以分为几种不同的情况（只考虑两侧类型不同）：
+
+1.NaN
+NaN和其他任何类型比较永远返回false(包括和他自己)。
+
+NaN == NaN // false
+2.Boolean
+Boolean和其他任何类型比较，Boolean首先被转换为Number类型。
+
+true == 1  // true 
+true == '2'  // false
+true == ['1']  // true
+true == ['2']  // false
+这里注意一个可能会弄混的点：undefined、null和Boolean比较，虽然undefined、null和false都很容易被想象成假值，但是他们比较结果是false，原因是false首先被转换成0：
+
+undefined == false // false
+null == false // false
+3.String和Number
+String和Number比较，先将String转换为Number类型。
+
+123 == '123' // true
+'' == 0 // true
+4.null和undefined
+null == undefined比较结果是true，除此之外，null、undefined和其他任何结果的比较值都为false。
+
+null == undefined // true
+null == '' // false
+null == 0 // false
+null == false // false
+undefined == '' // false
+undefined == 0 // false
+undefined == false // false
+5.原始类型和引用类型
+当原始类型和引用类型做比较时，对象类型会依照ToPrimitive规则转换为原始类型:
+
+  '[object Object]' == {} // true
+  '1,2,3' == [1, 2, 3] // true
+来看看下面这个比较：
+
+[] == ![] // true
+!的优先级高于==，![]首先会被转换为false，然后根据上面第三点，false转换成Number类型0，左侧[]转换为0，两侧比较相等。
+
+[null] == false // true
+[undefined] == false // true
+根据数组的ToPrimitive规则，数组元素为null或undefined时，该元素被当做空字符串处理，所以[null]、[undefined]都会被转换为0。
+
+所以，说了这么多，推荐使用===来判断两个值是否相等...
+
+7.5 一道有意思的面试题
+一道经典的面试题，如何让：a == 1 && a == 2 && a == 3。
+
+根据上面的拆箱转换，以及==的隐式转换，我们可以轻松写出答案：
+
+const a = {
+   value:[3,2,1],
+   valueOf: function () {return this.value.pop(); },
+} 
+八、判断JavaScript数据类型的方式
+8.1 typeof
+适用场景
+
+typeof操作符可以准确判断一个变量是否为下面几个原始类型：
+
+typeof 'ConardLi'  // string
+typeof 123  // number
+typeof true  // boolean
+typeof Symbol()  // symbol
+typeof undefined  // undefined
+你还可以用它来判断函数类型：
+
+typeof function(){}  // function
+不适用场景
+
+当你用typeof来判断引用类型时似乎显得有些乏力了：
+
+typeof [] // object
+typeof {} // object
+typeof new Date() // object
+typeof /^\d*$/; // object
+除函数外所有的引用类型都会被判定为object。
+
+另外typeof null === 'object'也会让人感到头痛，这是在JavaScript初版就流传下来的bug，后面由于修改会造成大量的兼容问题就一直没有被修复...
+
+8.2 instanceof
+instanceof操作符可以帮助我们判断引用类型具体是什么类型的对象：
+
+[] instanceof Array // true
+new Date() instanceof Date // true
+new RegExp() instanceof RegExp // true
+我们先来回顾下原型链的几条规则：
+
+1.所有引用类型都具有对象特性，即可以自由扩展属性
+2.所有引用类型都具有一个__proto__（隐式原型）属性，是一个普通对象
+3.所有的函数都具有prototype（显式原型）属性，也是一个普通对象
+4.所有引用类型__proto__值指向它构造函数的prototype
+5.当试图得到一个对象的属性时，如果变量本身没有这个属性，则会去他的__proto__中去找
+[] instanceof Array 实际上是判断Array.prototype是否在[]的原型链上。
+
+所以，使用instanceof来检测数据类型，不会很准确，这不是它设计的初衷：
+
+[] instanceof Object // true
+function(){}  instanceof Object // true
+另外，使用instanceof也不能检测基本数据类型，所以instanceof并不是一个很好的选择。
+
+8.3 toString
+上面我们在拆箱操作中提到了toString函数，我们可以调用它实现从引用类型的转换。
+
+每一个引用类型都有toString方法，默认情况下，toString()方法被每个Object对象继承。如果此方法在自定义对象中未被覆盖，toString() 返回 "[object type]"，其中type是对象的类型。
+
+const obj = {};
+obj.toString() // [object Object]
+注意，上面提到了如果此方法在自定义对象中未被覆盖，toString才会达到预想的效果，事实上，大部分引用类型比如Array、Date、RegExp等都重写了toString方法。
+
+我们可以直接调用Object原型上未被覆盖的toString()方法，使用call来改变this指向来达到我们想要的效果。
+
+
+
+8.4 jquery
+我们来看看jquery源码中如何进行类型判断：
+
+var class2type = {};
+jQuery.each( "Boolean Number String Function Array Date RegExp Object Error Symbol".split( " " ),
+function( i, name ) {
+	class2type[ "[object " + name + "]" ] = name.toLowerCase();
+} );
+
+type: function( obj ) {
+	if ( obj == null ) {
+		return obj + "";
+	}
+	return typeof obj === "object" || typeof obj === "function" ?
+		class2type[Object.prototype.toString.call(obj) ] || "object" :
+		typeof obj;
+}
+
+isFunction: function( obj ) {
+		return jQuery.type(obj) === "function";
+}
+原始类型直接使用typeof，引用类型使用Object.prototype.toString.call取得类型，借助一个class2type对象将字符串多余的代码过滤掉，例如[object function]将得到array，然后在后面的类型判断，如isFunction直接可以使用jQuery.type(obj) === "function"这样的判断。
+
+参考
+http://www.ecma-international.org/ecma-262/9.0/index.html
+https://while.dev/articles/explaining-truthy-falsy-null-0-and-undefined-in-typescript/
+https://github.com/mqyqingfeng/Blog/issues/28
+https://juejin.im/post/5bc5c752f265da0a9a399a62
+https://juejin.im/post/5bbda2b36fb9a05cfd27f55e
+《JS高级程序设计》
+小结
+希望你阅读本篇文章后可以达到以下几点：
+
+了解JavaScript中的变量在内存中的具体存储形式，可对应实际场景
+搞懂小数计算不精确的底层原因
+了解可能发生隐式类型转换的场景以及转换原则
+掌握判断JavaScript数据类型的方式和底层原理
 文中如有错误，欢迎在评论区指正，如果这篇文章帮助到了你，欢迎点赞和关注。
